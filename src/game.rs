@@ -1,6 +1,5 @@
 use colored::Color;
 
-// 我的真理用旧了
 use rand::seq::IteratorRandom;
 
 use strum::IntoEnumIterator;
@@ -10,6 +9,7 @@ use std::{collections::VecDeque, vec};
 use crate::display;
 
 use display::colored_string;
+
 pub type BrickInfo<'a> = (&'a [Pixel], Color);
 
 // classic
@@ -60,6 +60,35 @@ static SHAPE_DOT: BrickInfo = (
         b: 0x80,
     },
 );
+
+static SHAPE_ANGLE: BrickInfo = (
+    &[(0, 1), (1, 0)],
+    Color::TrueColor {
+        r: 0x00,
+        g: 0x60,
+        b: 0x40,
+    },
+);
+// @ @
+// @@@
+static SHAPE_THUNDER: BrickInfo = (
+    &[(-1, 1), (1, -1), (1, 0), (-1, 0)],
+    Color::TrueColor {
+        r: 0x90,
+        g: 0x60,
+        b: 0x00,
+    },
+);
+
+static SHAPE_DESK: BrickInfo = (
+    &[(-1, 1), (1, 1), (1, 0), (-1, 0)],
+    Color::TrueColor {
+        r: 0x20,
+        g: 0x60,
+        b: 0xee,
+    },
+);
+
 #[derive(strum_macros::EnumIter, Debug, PartialEq, Clone, Copy)]
 pub enum BrickType {
     I,
@@ -69,8 +98,11 @@ pub enum BrickType {
     Z,
     L,
     J,
-    Cross,
     Dot,
+    Desk,
+    Angle,
+    Cross,
+    Thunder,
 }
 type Pixel = (isize, isize);
 
@@ -81,11 +113,11 @@ pub struct Brick {
     color: Color,
 }
 
-const FULL: char = 'X';
-const WALL: char = 'O';
-const EMPTY: char = ' ';
+static FULL: char = '#';
+static WALL: char = 'H';
+static EMPTY: char = ' ';
+static SHADOW: char = '+';
 
-// ...
 impl Brick {
     fn limits(&self) -> (isize, isize, isize, isize) {
         self.pixels.iter().fold(
@@ -100,7 +132,7 @@ impl Brick {
             },
         )
     }
-    fn display(&self) -> String {
+    pub fn display(&self) -> String {
         let (min_x, max_x, min_y, max_y) = self.limits();
         let mut result = String::new();
         for y in (min_y..=max_y).rev() {
@@ -126,6 +158,9 @@ impl Brick {
             BrickType::J => SHAPE_J,
             BrickType::Dot => SHAPE_DOT,
             BrickType::Cross => SHAPE_CROSS,
+            BrickType::Angle => SHAPE_ANGLE,
+            BrickType::Desk => SHAPE_DESK,
+            BrickType::Thunder => SHAPE_THUNDER,
         };
         Self {
             brick_type: b,
@@ -223,7 +258,8 @@ impl std::fmt::Display for Tetris {
                 self.record.score,
                 self.now_brick.as_ref().unwrap().color,
                 self.get_absolute(),
-                self.following_bricks.clone()
+                self.following_bricks.clone(),
+                Some(self.get_shadow())
             )
         )
     }
@@ -249,6 +285,16 @@ impl Tetris {
                 eliminate_rows: 0,
             },
         }
+    }
+
+    fn get_shadow(&self) -> Vec<(isize, isize)> {
+        let mut now_poss = self.get_absolute();
+        while self.try_collapse(now_poss.clone()).is_none() {
+            for i in 0..now_poss.len() {
+                now_poss[i].1 += 1;
+            }
+        }
+        now_poss
     }
 
     fn random_brick() -> Brick {
@@ -360,6 +406,7 @@ impl Tetris {
     pub fn accelerate(&mut self) {
         self.down_settle();
     }
+
     pub fn limited(&self) -> Option<ControlLimit> {
         //是否贴着左右的Unit 用于限制左右移动碰撞箱
         let absolute_positions = self.get_absolute();
@@ -409,9 +456,8 @@ impl Tetris {
             }
         }
     }
-    fn try_collapse(&mut self) -> Option<Vec<(isize, isize)>> {
+    fn try_collapse(&self, poss: Vec<(isize, isize)>) -> Option<Vec<(isize, isize)>> {
         // 绝对位置
-        let poss = self.get_absolute();
         // 尝试碰撞
         let mut can_collapse = false;
         for e in &poss {
@@ -438,7 +484,7 @@ impl Tetris {
     }
 
     fn try_down(&mut self) -> InGameStatus {
-        if let Some(poss) = self.try_collapse() {
+        if let Some(poss) = self.try_collapse(self.get_absolute()) {
             self.collapse(poss.clone());
             let new_poss: Vec<(isize, isize)> = self.get_absolute();
             // 判断游戏是否结束
@@ -483,6 +529,7 @@ impl Tetris {
         self.now_brick_position = (self.board.center, 0);
         // 计算是否重叠，否则直接结束游戏.
         if self.is_overlapped() {
+            println!("overlap!");
             self.status = GameStatus::Exit;
         }
     }
@@ -534,7 +581,10 @@ impl Board {
         c: Color,
         poss: Vec<(isize, isize)>,
         following_bricks: VecDeque<Brick>,
+        shadow: Option<Vec<(isize, isize)>>,
     ) -> String {
+        let ept = EMPTY.to_string();
+
         let next_infos: Vec<String> = following_bricks
             .clone()
             .iter()
@@ -546,9 +596,17 @@ impl Board {
         for i in 0..=self.height {
             drawing_board += &separation;
             for j in 0..self.width {
+                // 优先本体
                 if poss.contains(&(j as isize, i as isize)) {
                     drawing_board += &colored_string(FULL.to_string(), c);
                     continue;
+                }
+                // 然后才是影子
+                if let Some(ref rvec) = shadow {
+                    if rvec.contains(&(j as isize, i as isize)) {
+                        drawing_board += &SHADOW.to_string();
+                        continue;
+                    }
                 }
                 if i == self.height {
                     drawing_board += &separation;
@@ -556,7 +614,7 @@ impl Board {
                     let ee = &self.datas[i][j];
                     match ee.0 {
                         None => {
-                            drawing_board += " ";
+                            drawing_board += &ept;
                         }
                         Some(color) => {
                             drawing_board += &colored_string(FULL.to_string(), color);
