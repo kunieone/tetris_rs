@@ -3,197 +3,14 @@ use colored::Color;
 use rand::seq::IteratorRandom;
 
 use strum::IntoEnumIterator;
+use strum_macros::Display;
 
-use std::{collections::VecDeque, vec};
+use std::{borrow::Borrow, collections::VecDeque, vec};
 
-use crate::display;
+use crate::{bricks::*, display, record::Record};
 
 use display::colored_string;
 
-pub type BrickInfo<'a> = (&'a [Pixel], Color);
-
-// classic
-static SHAPE_I: BrickInfo = (&[(0, 2), (0, 1), (0, -1)], Color::Cyan);
-static SHAPE_O: BrickInfo = (&[(0, 1), (1, 1), (1, 0)], Color::Yellow);
-static SHAPE_T: BrickInfo = (
-    &[(-1, 0), (0, 1), (1, 0)],
-    Color::TrueColor {
-        r: 0x64,
-        g: 0x95,
-        b: 0xed,
-    },
-);
-static SHAPE_S: BrickInfo = (&[(1, 0), (0, 1), (1, -1)], Color::Red);
-// featured
-static SHAPE_Z: BrickInfo = (
-    &[(0, 1), (-1, 0), (-1, -1)],
-    Color::TrueColor {
-        r: 0xec,
-        g: 0xc5,
-        b: 0x44,
-    },
-);
-static SHAPE_J: BrickInfo = (&[(0, 1), (0, -1), (-1, -1)], Color::Green);
-static SHAPE_L: BrickInfo = (
-    &[(0, 1), (0, -1), (1, -1)],
-    Color::TrueColor {
-        r: 0xef,
-        g: 0x6b,
-        b: 0x81,
-    },
-);
-
-// feature
-static SHAPE_CROSS: BrickInfo = (
-    &[(-1, 0), (1, 0), (0, -1), (0, 1)],
-    Color::TrueColor {
-        r: 0xd6,
-        g: 0x36,
-        b: 0xb4,
-    },
-);
-static SHAPE_DOT: BrickInfo = (
-    &[],
-    Color::TrueColor {
-        r: 0x80,
-        g: 0x00,
-        b: 0x80,
-    },
-);
-
-static SHAPE_ANGLE: BrickInfo = (
-    &[(0, 1), (1, 0)],
-    Color::TrueColor {
-        r: 0x00,
-        g: 0x60,
-        b: 0x40,
-    },
-);
-// @ @
-// @@@
-static SHAPE_THUNDER: BrickInfo = (
-    &[(-1, 1), (1, -1), (1, 0), (-1, 0)],
-    Color::TrueColor {
-        r: 0x90,
-        g: 0x60,
-        b: 0x00,
-    },
-);
-
-static SHAPE_DESK: BrickInfo = (
-    &[(-1, 1), (1, 1), (1, 0), (-1, 0)],
-    Color::TrueColor {
-        r: 0x20,
-        g: 0x60,
-        b: 0xee,
-    },
-);
-
-#[derive(strum_macros::EnumIter, Debug, PartialEq, Clone, Copy)]
-pub enum BrickType {
-    I,
-    O,
-    T,
-    S,
-    Z,
-    L,
-    J,
-    Dot,
-    Desk,
-    Angle,
-    Cross,
-    Thunder,
-}
-type Pixel = (isize, isize);
-
-#[derive(Debug, Clone)]
-pub struct Brick {
-    brick_type: BrickType,
-    pixels: Vec<Pixel>,
-    color: Color,
-}
-
-static FULL: char = '#';
-static WALL: char = 'H';
-static EMPTY: char = ' ';
-static SHADOW: char = '+';
-
-impl Brick {
-    fn limits(&self) -> (isize, isize, isize, isize) {
-        self.pixels.iter().fold(
-            (
-                std::isize::MAX,
-                std::isize::MIN,
-                std::isize::MAX,
-                std::isize::MIN,
-            ),
-            |(min_x, max_x, min_y, max_y), &(x, y)| {
-                (min_x.min(x), max_x.max(x), min_y.min(y), max_y.max(y))
-            },
-        )
-    }
-    pub fn display(&self) -> String {
-        let (min_x, max_x, min_y, max_y) = self.limits();
-        let mut result = String::new();
-        for y in (min_y..=max_y).rev() {
-            for x in min_x..=max_x {
-                if (x, y) == (0, 0) || self.pixels.contains(&(x, y)) {
-                    result.push(FULL);
-                } else {
-                    result.push(EMPTY);
-                }
-            }
-            result.push('\n');
-        }
-        result
-    }
-    pub fn new(b: BrickType) -> Self {
-        let ps: BrickInfo = match b {
-            BrickType::I => SHAPE_I,
-            BrickType::O => SHAPE_O,
-            BrickType::T => SHAPE_T,
-            BrickType::S => SHAPE_S,
-            BrickType::Z => SHAPE_Z,
-            BrickType::L => SHAPE_L,
-            BrickType::J => SHAPE_J,
-            BrickType::Dot => SHAPE_DOT,
-            BrickType::Cross => SHAPE_CROSS,
-            BrickType::Angle => SHAPE_ANGLE,
-            BrickType::Desk => SHAPE_DESK,
-            BrickType::Thunder => SHAPE_THUNDER,
-        };
-        Self {
-            brick_type: b,
-            pixels: ps.0.to_vec(),
-            color: ps.1,
-        }
-    }
-    pub fn rotate(&mut self) {
-        for i in 0..self.pixels.len() {
-            let (x, y) = self.pixels[i];
-            self.pixels[i] = (y, -x);
-        }
-    }
-}
-
-/*
-O              O       SCORE: {}
-O              O
-O              O
-O              O
-O              O       NEXT:
-O              O       ||||||
-O              O       |  X |
-O              O       |  X |
-O              O       |  X |
-O              O       |  X |
-O              O       ||||||
-O              O
-OX             O
-OX             O
-OXX            O
-OOOOOOOOOOOOOOOO
-*/
 #[derive(Debug, PartialEq)]
 pub enum GameStatus {
     Running,
@@ -202,30 +19,6 @@ pub enum GameStatus {
     Exit,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct Record {
-    score: i64,
-    combo: usize, //连击数量
-    eliminate_rows: usize,
-}
-
-impl Record {
-    pub fn compute(&mut self, rows_num: usize) {
-        if rows_num == 0 {
-            self.combo = 0;
-            return;
-        }
-        for _ in 0..rows_num {
-            self.combo_once()
-        }
-    }
-
-    pub fn combo_once(&mut self) {
-        self.score += 100 + (self.combo * 30) as i64;
-        self.eliminate_rows += 1;
-        self.combo += 1;
-    }
-}
 #[derive(PartialEq, Eq)]
 pub enum InGameStatus {
     GameJustOver,
@@ -283,6 +76,7 @@ impl Tetris {
                 score: 0,
                 combo: 0,
                 eliminate_rows: 0,
+                high_combo: 0,
             },
         }
     }
@@ -400,11 +194,16 @@ impl Tetris {
     pub fn event_sink(&mut self) {
         // 持续掉掉落
         // 这里不需要担心内部的游戏结束触发。机制。如果结束，则游戏Status成为Exit，游戏循环内通过判断则结束游戏。
-        while self.down_settle() == 2 {}
+        let mut coounter = 0;
+        while self.down_settle() == 2 {
+            coounter += 1;
+        }
+        self.record.score += coounter;
     }
 
     pub fn accelerate(&mut self) {
         self.down_settle();
+        self.record.score += 1;
     }
 
     pub fn limited(&self) -> Option<ControlLimit> {
@@ -436,15 +235,12 @@ impl Tetris {
             (false, false) => None,
         }
     }
-    fn get_absolute(&self) -> Vec<(isize, isize)> {
-        let r_x = self.now_brick_position.0 as isize;
-        let r_y = self.now_brick_position.1 as isize;
 
-        let mut absolute_positions: Vec<(isize, isize)> = vec![(r_x, r_y)];
-        for e in &self.now_brick.as_ref().unwrap().pixels {
-            absolute_positions.push((r_x + e.0, (r_y - e.1)))
-        }
-        absolute_positions
+    fn get_absolute(&self) -> Vec<(isize, isize)> {
+        self.now_brick.as_ref().unwrap().pixels_info(
+            self.now_brick_position.0 as isize,
+            self.now_brick_position.1 as isize,
+        )
     }
 
     fn collapse(&mut self, poss: Vec<(isize, isize)>) {
@@ -538,14 +334,8 @@ impl Tetris {
         self.status = GameStatus::Running;
         self.new_small_run();
     }
-    pub fn update(&mut self) -> Option<Record> {
-        match self.down_settle() {
-            0 => {
-                return Some(self.record);
-            }
-            1 | 2 => None,
-            _ => unreachable!(),
-        }
+    pub fn update(&mut self) {
+        self.down_settle();
     }
 }
 
@@ -643,5 +433,50 @@ impl Board {
         }
 
         drawing_board
+    }
+}
+
+#[derive(Debug)]
+pub struct TerminalPainter {
+    pub game: Tetris,
+}
+
+impl std::fmt::Display for TerminalPainter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+impl TerminalPainter {
+    pub fn draw(&self) {
+        let pass = self.game.get_absolute();
+        let w = self.game.board.width;
+        let h = self.game.board.height;
+
+        let mut painter_vec = vec![vec!["".to_string(); w + 10]; h + 10];
+
+        // 绘制墙
+        for i in 0..w + 2 {
+            painter_vec[0][i] = WALL.to_string();
+            painter_vec[h + 2][i] = WALL.to_string();
+        }
+        for j in 0..h + 2 {
+            painter_vec[j][0] = WALL.to_string();
+            painter_vec[j][w + 2] = WALL.to_string();
+        }
+        let instruction = "Press arrow key to move, space to sink";
+        for i in 0..instruction.len() {
+             
+        }
+
+        for y in 0..h {
+            for x in 0..w {
+                let pixel_with_color = match self.game.board.datas[x][y].0 {
+                    Some(color) => colored_string(FULL.to_string(), color),
+                    None => EMPTY.to_string(),
+                };
+                painter_vec[x + 1][y + 1] = pixel_with_color;
+            }
+        }
     }
 }
