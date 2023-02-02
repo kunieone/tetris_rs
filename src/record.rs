@@ -1,4 +1,4 @@
-#[derive( Clone, Copy,Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct Record {
     pub score: i64,
     pub combo: usize, //连击数量

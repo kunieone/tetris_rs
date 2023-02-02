@@ -1,6 +1,5 @@
 use colored::Color;
 
-use crate::display::colored_string;
 type Pixel = (isize, isize);
 
 pub type BrickInfo<'a> = (&'a [Pixel], Color);
@@ -37,14 +36,14 @@ pub static SHAPE_L: BrickInfo = (
 );
 
 // feature
-pub static SHAPE_CROSS: BrickInfo = (
-    &[(-1, 0), (1, 0), (0, -1), (0, 1)],
-    Color::TrueColor {
-        r: 0xea,
-        g: 0x53,
-        b: 0xea,
-    },
-);
+// pub static SHAPE_CROSS: BrickInfo = (
+//     &[(-1, 0), (1, 0), (0, -1), (0, 1)],
+//     Color::TrueColor {
+//         r: 0xea,
+//         g: 0x53,
+//         b: 0xea,
+//     },
+// );
 pub static SHAPE_DOT: BrickInfo = (
     &[],
     Color::TrueColor {
@@ -106,7 +105,7 @@ pub enum BrickType {
     Dot,
     Desk,
     Angle,
-    Cross,
+    // Cross,
     W,
     Bean,
 }
@@ -124,7 +123,10 @@ pub static EMPTY: char = ' ';
 pub static SHADOW: char = '+';
 
 impl Brick {
-    fn limits(&self) -> (isize, isize, isize, isize) {
+    pub fn limits(&self) -> (isize, isize, isize, isize) {
+        if self.pixels.len() == 0 {
+            return (0, 0, 0, 0);
+        }
         self.pixels.iter().fold(
             (
                 std::isize::MAX,
@@ -137,25 +139,11 @@ impl Brick {
             },
         )
     }
-    pub fn get_size(&self) -> (isize, isize) {
+    pub fn get_size(&self) -> (usize, usize) {
         let (min_x, max_x, min_y, max_y) = self.limits();
-        (max_x - min_x, max_y - min_y)
+        ((max_x - min_x) as usize + 1, (max_y - min_y) as usize + 1)
     }
-    pub fn display(&self) -> String {
-        let (min_x, max_x, min_y, max_y) = self.limits();
-        let mut result = String::new();
-        for y in (min_y..=max_y).rev() {
-            for x in min_x..=max_x {
-                if (x, y) == (0, 0) || self.pixels.contains(&(x, y)) {
-                    result.push(FULL);
-                } else {
-                    result.push(EMPTY);
-                }
-            }
-            result.push('\n');
-        }
-        colored_string(result, self.color)
-    }
+
     pub fn new(b: BrickType) -> Self {
         let ps: BrickInfo = match b {
             BrickType::I => SHAPE_I,
@@ -166,7 +154,7 @@ impl Brick {
             BrickType::L => SHAPE_L,
             BrickType::J => SHAPE_J,
             BrickType::Dot => SHAPE_DOT,
-            BrickType::Cross => SHAPE_CROSS,
+            // BrickType::Cross => SHAPE_CROSS,
             BrickType::Angle => SHAPE_ANGLE,
             BrickType::Desk => SHAPE_DESK,
             BrickType::W => SHAPE_W,

@@ -9,7 +9,7 @@ keywords = ["game", "tetris", "rust"]
 categories = ["parsing"]
 readme = "readme.md"
 license = "MIT"
-repository = "https://github.com/kunieone/tetris_rs"
+# repository = "https://github.com/kunieone/tetris_rs"
 
 
 [[bin]]
@@ -27,6 +27,7 @@ strum = "0.24"
 strum_macros = "0.24"
 rand = "0.8.5"
 termion = "2.0.1"
+dotenv = "0.15.0"
 # tokio = { version = "1.25.0", features = ["full"] }
 # tokio-util = "0.7.4"
 # futures = "0.3.26"

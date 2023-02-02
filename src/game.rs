@@ -3,15 +3,14 @@ use colored::Color;
 use rand::seq::IteratorRandom;
 
 use strum::IntoEnumIterator;
-use strum_macros::Display;
 
-use std::{borrow::Borrow, collections::VecDeque, vec};
+use std::{collections::VecDeque, vec};
 
-use crate::{bricks::*, display, record::Record};
+use crate::{bricks::*, env::EnvConfig, record::Record};
 
-use display::colored_string;
+// use display::colored_string;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum GameStatus {
     Running,
     Pause,
@@ -32,7 +31,7 @@ pub enum ControlLimit {
     CantLeftAndRight,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Tetris {
     pub board: Board,
     pub status: GameStatus,
@@ -40,26 +39,13 @@ pub struct Tetris {
     pub now_brick_position: (usize, usize),
     pub following_bricks: VecDeque<Brick>,
     pub record: Record,
-}
-
-impl std::fmt::Display for Tetris {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            self.board.display(
-                self.record.score,
-                self.now_brick.as_ref().unwrap().color,
-                self.get_absolute(),
-                self.following_bricks.clone(),
-                Some(self.get_shadow())
-            )
-        )
-    }
+    pub cfg: EnvConfig,
 }
 
 impl Tetris {
-    pub fn new(w: usize, h: usize) -> Self {
+    pub fn new(config: EnvConfig) -> Self {
+        let w = config.width;
+        let h = config.height;
         let mut q = VecDeque::new();
         for _ in 0..3 {
             q.push_back(Self::random_brick());
@@ -78,10 +64,11 @@ impl Tetris {
                 eliminate_rows: 0,
                 high_combo: 0,
             },
+            cfg: config,
         }
     }
 
-    fn get_shadow(&self) -> Vec<(isize, isize)> {
+    pub fn get_shadow(&self) -> Vec<(isize, isize)> {
         let mut now_poss = self.get_absolute();
         while self.try_collapse(now_poss.clone()).is_none() {
             for i in 0..now_poss.len() {
@@ -236,11 +223,14 @@ impl Tetris {
         }
     }
 
-    fn get_absolute(&self) -> Vec<(isize, isize)> {
-        self.now_brick.as_ref().unwrap().pixels_info(
-            self.now_brick_position.0 as isize,
-            self.now_brick_position.1 as isize,
-        )
+    pub fn get_absolute(&self) -> Vec<(isize, isize)> {
+        match self.now_brick.as_ref() {
+            Some(e) => e.pixels_info(
+                self.now_brick_position.0 as isize,
+                self.now_brick_position.1 as isize,
+            ),
+            None => vec![],
+        }
     }
 
     fn collapse(&mut self, poss: Vec<(isize, isize)>) {
@@ -337,11 +327,35 @@ impl Tetris {
     pub fn update(&mut self) {
         self.down_settle();
     }
+
+    pub fn update_by(&mut self, counter: i32) {
+        match self.cfg.accelerate {
+            true => {
+                if counter
+                    % (match self.record.score {
+                        0..2000 => 100,
+                        2000..6000 => 70,
+                        6000..12000 => 60,
+                        12000..30000 => 60,
+                        _ => 40,
+                    })
+                    == 0
+                {
+                    self.update()
+                }
+            }
+            false => {
+                if counter % (100) == 0 {
+                    self.update()
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
-pub struct Unit(Option<Color>);
-type Line = Vec<Unit>;
+pub struct Unit(pub Option<Color>);
+pub type Line = Vec<Unit>;
 #[derive(Debug, Clone)]
 pub struct Board {
     pub center: usize,
@@ -361,122 +375,6 @@ impl Board {
             height,
             datas,
             center: width / 2,
-        }
-    }
-
-    // poss: positions
-    pub fn display(
-        &self,
-        score: i64,
-        c: Color,
-        poss: Vec<(isize, isize)>,
-        following_bricks: VecDeque<Brick>,
-        shadow: Option<Vec<(isize, isize)>>,
-    ) -> String {
-        let ept = EMPTY.to_string();
-
-        let next_infos: Vec<String> = following_bricks
-            .clone()
-            .iter()
-            .map(|x| colored_string(format!("{:?}", x.brick_type), x.color))
-            .collect();
-
-        let separation = WALL.to_string();
-        let mut drawing_board = "".to_string();
-        for i in 0..=self.height {
-            drawing_board += &separation;
-            for j in 0..self.width {
-                // 优先本体
-                if poss.contains(&(j as isize, i as isize)) {
-                    drawing_board += &colored_string(FULL.to_string(), c);
-                    continue;
-                }
-                // 然后才是影子
-                if let Some(ref rvec) = shadow {
-                    if rvec.contains(&(j as isize, i as isize)) {
-                        drawing_board += &SHADOW.to_string();
-                        continue;
-                    }
-                }
-                if i == self.height {
-                    drawing_board += &separation;
-                } else {
-                    let ee = &self.datas[i][j];
-                    match ee.0 {
-                        None => {
-                            drawing_board += &ept;
-                        }
-                        Some(color) => {
-                            drawing_board += &colored_string(FULL.to_string(), color);
-                        }
-                    }
-                }
-            }
-            drawing_board += &separation;
-            if i == 5 {
-                drawing_board += &format!("          score {{ {} }}", score);
-            }
-            if i == 7 {
-                drawing_board += &format!("          nexts");
-            }
-            if i == 9 {
-                drawing_board += &format!("          {}", next_infos[0]);
-            }
-            if i == 10 {
-                drawing_board += &format!("          {}", next_infos[1]);
-            }
-            if i == 11 {
-                drawing_board += &format!("          {}", next_infos[2]);
-            }
-
-            drawing_board += "\n";
-        }
-
-        drawing_board
-    }
-}
-
-#[derive(Debug)]
-pub struct TerminalPainter {
-    pub game: Tetris,
-}
-
-impl std::fmt::Display for TerminalPainter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
-    }
-}
-
-impl TerminalPainter {
-    pub fn draw(&self) {
-        let pass = self.game.get_absolute();
-        let w = self.game.board.width;
-        let h = self.game.board.height;
-
-        let mut painter_vec = vec![vec!["".to_string(); w + 10]; h + 10];
-
-        // 绘制墙
-        for i in 0..w + 2 {
-            painter_vec[0][i] = WALL.to_string();
-            painter_vec[h + 2][i] = WALL.to_string();
-        }
-        for j in 0..h + 2 {
-            painter_vec[j][0] = WALL.to_string();
-            painter_vec[j][w + 2] = WALL.to_string();
-        }
-        let instruction = "Press arrow key to move, space to sink";
-        for i in 0..instruction.len() {
-             
-        }
-
-        for y in 0..h {
-            for x in 0..w {
-                let pixel_with_color = match self.game.board.datas[x][y].0 {
-                    Some(color) => colored_string(FULL.to_string(), color),
-                    None => EMPTY.to_string(),
-                };
-                painter_vec[x + 1][y + 1] = pixel_with_color;
-            }
         }
     }
 }
