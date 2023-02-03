@@ -27,7 +27,7 @@ impl Record {
         }
     }
 
-    pub fn combo_once(&mut self) {
+    fn combo_once(&mut self) {
         self.score += 100 + (self.combo * 30) as i64;
         self.eliminate_rows += 1;
         self.combo += 1;

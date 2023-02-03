@@ -74,9 +74,7 @@ fn launch(mut t: Tetris, rx: Receiver<Option<Signal>>) {
         // 接收管道内容
         match rx.try_recv() {
             Ok(Some(signal)) => match signal {
-                Signal::Quit => {
-                    t.status = GameStatus::Exit;
-                }
+                Signal::Quit => t.event_quit(),
                 Signal::Rotate => t.event_rotate(),
                 Signal::Left => t.event_left(),
                 Signal::Right => t.event_right(),
@@ -88,7 +86,8 @@ fn launch(mut t: Tetris, rx: Receiver<Option<Signal>>) {
 
         TerminalPainter::draw_game(&t);
 
-        if t.status == GameStatus::Exit {
+        if let GameStatus::Exit(ref e) = t.status {
+            TerminalPainter::raw_write_fix(e.to_string());
             TerminalPainter::draw_record(&t);
             write!(stdout, "{}", termion::cursor::Show).unwrap();
 
@@ -106,7 +105,7 @@ fn main() {
     let mut t = Tetris::new(_cfg);
 
     t.start();
-
     thread::spawn(move || listen_key_event(tx));
+
     launch(t, rx)
 }

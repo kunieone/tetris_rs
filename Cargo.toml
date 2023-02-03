@@ -3,13 +3,16 @@ name = "tetris"
 version = "0.1.0"
 edition = "2021"
 
+homepage = "https://github.com/kunieone/tetris_rs"
+
+
 authors = ["starevan <kunieone@163.com>"]
-description = "Tetris俄罗斯方块实现"
+description = "tetris game written in rust."
 keywords = ["game", "tetris", "rust"]
 categories = ["parsing"]
 readme = "readme.md"
 license = "MIT"
-# repository = "https://github.com/kunieone/tetris_rs"
+repository = "https://github.com/kunieone/tetris_rs"
 
 
 [[bin]]
@@ -21,16 +24,13 @@ path = "src/main.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# async-std = { version = "1.12.0" }
 colored = "2.0.0"
 strum = "0.24"
 strum_macros = "0.24"
 rand = "0.8.5"
 termion = "2.0.1"
 dotenv = "0.15.0"
-# tokio = { version = "1.25.0", features = ["full"] }
-# tokio-util = "0.7.4"
-# futures = "0.3.26"
+tokio = "1.25.0"
 [dependencies.crossterm]
 features = ["event-stream"]
 version = "0.26.0"

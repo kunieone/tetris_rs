@@ -7,6 +7,7 @@ pub struct EnvConfig {
     pub accelerate: bool,
     pub width: usize,
     pub height: usize,
+    pub texture: [char; 4],
 }
 
 pub fn load() -> Result<EnvConfig, String> {
@@ -32,11 +33,39 @@ pub fn load() -> Result<EnvConfig, String> {
         Ok(value) => value.parse().map_err(|_| "HEIGHT has invalid value")?,
         Err(_) => 20,
     };
+    let full = match env::var("TEXTURE_FULL") {
+        Ok(value) => value
+            .parse()
+            .map_err(|_| "TEXTURE_FULL has invalid value")?,
+        Err(_) => '#',
+    };
+
+    let wall = match env::var("TEXTURE_WALL") {
+        Ok(value) => value
+            .parse()
+            .map_err(|_| "TEXTURE_WALL has invalid value")?,
+        Err(_) => 'H',
+    };
+
+    let empty = match env::var("TEXTURE_EMPTY") {
+        Ok(value) => value
+            .parse()
+            .map_err(|_| "TEXTURE_EMPTY has invalid value")?,
+        Err(_) => ' ',
+    };
+
+    let shadow = match env::var("TEXTURE_SHADOW") {
+        Ok(value) => value
+            .parse()
+            .map_err(|_| "TEXTURE_SHADOW has invalid value")?,
+        Err(_) => '.',
+    };
 
     Ok(EnvConfig {
         feature_brick,
         accelerate,
         width,
         height,
+        texture: [full, wall, empty, shadow],
     })
 }

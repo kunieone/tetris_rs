@@ -1,21 +1,15 @@
 use colored::Color;
 
-use rand::seq::IteratorRandom;
-
-use strum::IntoEnumIterator;
-
 use std::{collections::VecDeque, vec};
 
 use crate::{bricks::*, env::EnvConfig, record::Record};
 
-// use display::colored_string;
-
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum GameStatus {
     Running,
     Pause,
     Accelerative,
-    Exit,
+    Exit(String),
 }
 
 #[derive(PartialEq, Eq)]
@@ -43,17 +37,18 @@ pub struct Tetris {
 }
 
 impl Tetris {
-    pub fn new(config: EnvConfig) -> Self {
-        let w = config.width;
-        let h = config.height;
+    pub fn new(cfg: EnvConfig) -> Self {
+        let w = cfg.width;
+        let h = cfg.height;
         let mut q = VecDeque::new();
         for _ in 0..3 {
-            q.push_back(Self::random_brick());
+            q.push_back(Brick::random(cfg.feature_brick));
         }
         let board = Board::new(w, h);
         let c = board.center;
         Self {
             board,
+            cfg,
             status: GameStatus::Pause,
             now_brick_position: (c, 0),
             following_bricks: q,
@@ -64,7 +59,6 @@ impl Tetris {
                 eliminate_rows: 0,
                 high_combo: 0,
             },
-            cfg: config,
         }
     }
 
@@ -78,18 +72,14 @@ impl Tetris {
         now_poss
     }
 
-    fn random_brick() -> Brick {
-        let mut rng = rand::thread_rng();
-        Brick::new(BrickType::iter().choose(&mut rng).unwrap())
-    }
-
     fn line_full(line: &Line) -> bool {
         line.iter().all(|x| x.0.is_some())
     }
 
     // instance method
     fn add_next_brick(&mut self) {
-        self.following_bricks.push_back(Self::random_brick())
+        self.following_bricks
+            .push_back(Brick::random(self.cfg.feature_brick))
     }
 
     fn combout(&mut self) -> usize {
@@ -175,7 +165,7 @@ impl Tetris {
         self.now_brick_position.0 += 1;
     }
     pub fn event_quit(&mut self) {
-        self.status = GameStatus::Exit;
+        self.status = GameStatus::Exit("keyboard quit".to_string());
     }
 
     pub fn event_sink(&mut self) {
@@ -277,7 +267,7 @@ impl Tetris {
             for (_, y) in new_poss {
                 if y < 0 {
                     // 确定结束了
-                    self.status = GameStatus::Exit;
+                    self.status = GameStatus::Exit("full".to_string());
                     return InGameStatus::GameJustOver;
                 }
             }
@@ -315,8 +305,7 @@ impl Tetris {
         self.now_brick_position = (self.board.center, 0);
         // 计算是否重叠，否则直接结束游戏.
         if self.is_overlapped() {
-            println!("overlap!");
-            self.status = GameStatus::Exit;
+            self.status = GameStatus::Exit("overlap".to_string());
         }
     }
 
@@ -331,16 +320,15 @@ impl Tetris {
     pub fn update_by(&mut self, counter: i32) {
         match self.cfg.accelerate {
             true => {
-                if counter
-                    % (match self.record.score {
-                        0..2000 => 100,
-                        2000..6000 => 70,
-                        6000..12000 => 60,
-                        12000..30000 => 60,
-                        _ => 40,
-                    })
-                    == 0
-                {
+                let time = match self.record.score {
+                    0..3000 => 100,
+                    3000..6000 => 70,
+                    6000..12000 => 60,
+                    12000..15000 => 50,
+                    15000..20000 => 45,
+                    _ => 40,
+                };
+                if counter % (time) == 0 {
                     self.update()
                 }
             }

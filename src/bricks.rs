@@ -1,4 +1,6 @@
 use colored::Color;
+use rand::seq::IteratorRandom;
+use strum::IntoEnumIterator;
 
 type Pixel = (isize, isize);
 
@@ -35,15 +37,15 @@ pub static SHAPE_L: BrickInfo = (
     },
 );
 
-// feature
 // pub static SHAPE_CROSS: BrickInfo = (
-//     &[(-1, 0), (1, 0), (0, -1), (0, 1)],
 //     Color::TrueColor {
+//     &[(-1, 0), (1, 0), (0, -1), (0, 1)],
 //         r: 0xea,
 //         g: 0x53,
 //         b: 0xea,
 //     },
 // );
+// feature
 pub static SHAPE_DOT: BrickInfo = (
     &[],
     Color::TrueColor {
@@ -92,7 +94,7 @@ pub static SHAPE_DESK: BrickInfo = (
     },
 );
 
-#[derive(strum_macros::EnumIter, Debug, PartialEq, Clone, Copy)]
+#[derive(strum_macros::EnumIter, Debug, PartialEq, Clone, Copy, Eq, PartialOrd, Ord)]
 pub enum BrickType {
     I,
     O,
@@ -105,9 +107,13 @@ pub enum BrickType {
     Dot,
     Desk,
     Angle,
-    // Cross,
     W,
     Bean,
+}
+impl BrickType {
+    pub fn is_featured(&self) -> bool {
+        *self as u8 >= 7
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -116,11 +122,6 @@ pub struct Brick {
     pub pixels: Vec<Pixel>,
     pub color: Color,
 }
-
-pub static FULL: char = '#';
-pub static WALL: char = 'O';
-pub static EMPTY: char = ' ';
-pub static SHADOW: char = '+';
 
 impl Brick {
     pub fn limits(&self) -> (isize, isize, isize, isize) {
@@ -178,5 +179,19 @@ impl Brick {
             absolute_positions.push((offset_x + e.0, (offset_y - e.1)))
         }
         absolute_positions
+    }
+
+    pub fn random(feature_mode: bool) -> Brick {
+        let mut rng = rand::thread_rng();
+        let it = BrickType::iter();
+        Brick::new(
+            match feature_mode {
+                true => it.choose(&mut rng),
+                false => it
+                    .filter_map(|bt| if !bt.is_featured() { Some(bt) } else { None })
+                    .choose(&mut rng),
+            }
+            .unwrap(),
+        )
     }
 }

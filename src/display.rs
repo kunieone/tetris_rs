@@ -1,12 +1,8 @@
 use colored::{Color, Colorize};
 use std::io::{stdout, Write};
-// use strum_macros::Display;
 use termion::raw::IntoRawMode;
 
-use crate::{
-    bricks::{Brick, EMPTY, FULL, WALL},
-    game::Tetris,
-};
+use crate::{bricks::Brick, game::Tetris};
 
 struct PaintBoard(pub Vec<Vec<String>>, pub String);
 
@@ -78,15 +74,15 @@ fn paint_board_test() {
 pub struct TerminalPainter {}
 
 impl TerminalPainter {
-    pub fn bricks_display(brick: &Brick) -> String {
+    fn bricks_display(brick: &Brick, texture: [char; 4]) -> String {
         let (min_x, max_x, min_y, max_y) = brick.limits();
         let mut result = String::new();
         for y in (min_y..=max_y).rev() {
             for x in min_x..=max_x {
                 if (x, y) == (0, 0) || brick.pixels.contains(&(x, y)) {
-                    result.push(FULL);
+                    result.push(texture[0]);
                 } else {
-                    result.push(EMPTY);
+                    result.push(texture[2]);
                 }
             }
             result.push('\n');
@@ -114,64 +110,43 @@ impl TerminalPainter {
         }
     }
 
-    pub fn connect_strings(str1: &str, str2: &str, gap: usize) -> String {
-        let lines1 = str1.split("\n");
-        let lines2 = str2.split("\n");
-        let mut result = Vec::new();
-
-        let max_len = std::cmp::max(lines1.clone().count(), lines2.clone().count());
-        for i in 0..max_len {
-            let line1 = match lines1.clone().nth(i) {
-                Some(l) => l,
-                None => "",
-            };
-            let line2 = match lines2.clone().nth(i) {
-                Some(l) => l,
-                None => "",
-            };
-            let spacing = if gap > line1.len() {
-                " ".repeat(gap - line1.len())
-            } else {
-                "".to_string()
-            };
-            result.push(format!("{}{}  {}", line1, spacing, line2));
-        }
-
-        result.join("\n")
-    }
-
     pub fn draw(game: &Tetris) -> String {
         let poss = game.get_absolute();
         let w = game.board.width;
         let h = game.board.height;
-
+        let full = game.cfg.texture[0];
+        let wall = game.cfg.texture[1];
+        let empty = game.cfg.texture[2];
+        let shadow =game.cfg.texture[3];
         let mut painter: PaintBoard = PaintBoard::new(w, h, ' ');
 
         // 绘制墙
         // 横墙
         for i in 0..w + 2 {
-            painter.paint_pixel(i, 0, WALL, None);
-            painter.paint_pixel(i, h + 1, WALL, None);
+            painter.paint_pixel(i, 0, '+', None);
+            painter.paint_pixel(i, h + 1, wall, None);
         }
         //竖墙
         for j in 0..h + 2 {
-            painter.paint_pixel(0, j, WALL, None);
-            painter.paint_pixel(w + 1, j, WALL, None);
+            painter.paint_pixel(0, j, wall, None);
+            painter.paint_pixel(w + 1, j, wall, None);
         }
 
         // 绘制元素
         for y in 0..h {
             for x in 0..w {
                 match game.board.datas[y][x].0 {
-                    Some(color) => painter.paint_pixel(x + 1, y + 1, FULL, Some(color)),
-                    None => painter.paint_pixel(x + 1, y + 1, EMPTY, None),
+                    Some(color) => painter.paint_pixel(x + 1, y + 1, full, Some(color)),
+                    None => painter.paint_pixel(x + 1, y + 1, empty, None),
                 };
             }
         }
         // 绘制影子
 
         for &(x, y) in &game.get_shadow() {
-            painter.paint_pixel(x as usize + 1, y as usize + 1, FULL, None);
+            if y >= 0 {
+                painter.paint_pixel(x as usize + 1, y as usize + 1, shadow, None);
+            }
         }
         // 绘制本体
         for &(x, y) in &poss {
@@ -179,7 +154,7 @@ impl TerminalPainter {
                 painter.paint_pixel(
                     x as usize + 1,
                     y as usize + 1,
-                    FULL,
+                    full,
                     Some(game.now_brick.clone().unwrap().color),
                 );
             }
@@ -208,7 +183,12 @@ impl TerminalPainter {
         painter.paint_string(w + 5, start_y, "nexts:", None);
         start_y += 2;
         for e in game.following_bricks.iter() {
-            painter.paint_string(w + 7, start_y, &(Self::bricks_display(e)), Some(e.color));
+            painter.paint_string(
+                w + 7,
+                start_y,
+                &(Self::bricks_display(e, game.cfg.texture)),
+                Some(e.color),
+            );
             start_y += e.get_size().1 + 1;
         }
 
@@ -231,6 +211,7 @@ fn game_print_test() {
         width: 10,
         height: 15,
         feature_brick: true,
+        texture: ['#', '0', ' ', '+'],
     });
 
     t.start();
