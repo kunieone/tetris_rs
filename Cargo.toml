@@ -30,7 +30,6 @@ strum_macros = "0.24"
 rand = "0.8.5"
 termion = "2.0.1"
 dotenv = "0.15.0"
-tokio = "1.25.0"
 [dependencies.crossterm]
 features = ["event-stream"]
 version = "0.26.0"
