@@ -28,7 +28,7 @@ impl Record {
     }
 
     fn combo_once(&mut self) {
-        self.score += 100 + (self.combo * 30) as i64;
+        self.score += 200 + (self.combo * 60) as i64;
         self.eliminate_rows += 1;
         self.combo += 1;
         // 计算历史最高连击
