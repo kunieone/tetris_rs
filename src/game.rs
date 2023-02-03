@@ -53,12 +53,7 @@ impl Tetris {
             now_brick_position: (c, 0),
             following_bricks: q,
             now_brick: None,
-            record: Record {
-                score: 0,
-                combo: 0,
-                eliminate_rows: 0,
-                high_combo: 0,
-            },
+            record: Record::new(),
         }
     }
 
@@ -136,6 +131,8 @@ impl Tetris {
         }
         false
     }
+
+    // -----------------EVENT--------------------
     pub fn event_rotate(&mut self) {
         self.try_rotate();
     }
@@ -172,16 +169,17 @@ impl Tetris {
         // 持续掉掉落
         // 这里不需要担心内部的游戏结束触发。机制。如果结束，则游戏Status成为Exit，游戏循环内通过判断则结束游戏。
         let mut coounter = 0;
-        while self.down_settle() == 2 {
+        while self.down_settle() == InGameStatus::KeepDroping {
             coounter += 1;
         }
         self.record.score += coounter;
     }
 
-    pub fn accelerate(&mut self) {
+    pub fn event_accelerate(&mut self) {
         self.down_settle();
         self.record.score += 1;
     }
+    // ---------------EVENT END--------------------
 
     pub fn limited(&self) -> Option<ControlLimit> {
         //是否贴着左右的Unit 用于限制左右移动碰撞箱
@@ -191,8 +189,8 @@ impl Tetris {
         let mut cant_r = false;
         for e in &absolute_positions {
             let &(x, y) = e;
+            //防止越界
             if y >= 0 {
-                //防止越界
                 // 左边
                 if x == 0 || self.board.datas[y as usize][x as usize - 1].0.is_some() {
                     cant_l = true
@@ -233,7 +231,7 @@ impl Tetris {
         }
     }
     fn try_collapse(&self, poss: Vec<(isize, isize)>) -> Option<Vec<(isize, isize)>> {
-        // 绝对位置
+        // 绝对位置poss
         // 尝试碰撞
         let mut can_collapse = false;
         for e in &poss {
@@ -278,23 +276,21 @@ impl Tetris {
     }
 
     // 结算
-    // 0 游戏结束 1 完成掉落，刚刚落地。 2 继续掉落中
-    fn down_settle(&mut self) -> usize {
-        match self.try_down() {
+    //  /游戏结束 /完成掉落刚刚落地 /继续掉落中
+    fn down_settle(&mut self) -> InGameStatus {
+        let down_result = self.try_down();
+        match down_result {
             InGameStatus::FinishDropping => {
                 let times = self.combout(); //计算消除的行数
                 self.record.compute(times); //记录对应的分数
                 self.new_small_run(); //召唤新的砖块.
-                1
             }
             InGameStatus::KeepDroping => {
                 self.now_brick_position.1 += 1;
-                2
             }
-            InGameStatus::GameJustOver => {
-                return 0;
-            }
+            InGameStatus::GameJustOver => {}
         }
+        down_result
     }
 
     fn new_small_run(&mut self) {
@@ -321,11 +317,11 @@ impl Tetris {
         match self.cfg.accelerate {
             true => {
                 let time = match self.record.score {
-                    0..6000 => 100,
-                    6000..10000 => 70,
-                    10000..25000 => 60,
-                    25000..40000 => 50,
-                    40000..60000 => 45,
+                    0..=5999 => 100,
+                    6000..=9999 => 70,
+                    10000..=24999 => 60,
+                    25000..=39999 => 50,
+                    40000..=59999 => 45,
                     _ => 40,
                 };
                 if counter % (time) == 0 {

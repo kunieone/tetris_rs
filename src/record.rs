@@ -17,6 +17,15 @@ impl std::fmt::Display for Record {
 }
 
 impl Record {
+    pub fn new() -> Self {
+        Self {
+            score: 0,
+            combo: 0,
+            eliminate_rows: 0,
+            high_combo: 0,
+        }
+    }
+
     pub fn compute(&mut self, rows_num: usize) {
         if rows_num == 0 {
             self.combo = 0;

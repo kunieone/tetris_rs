@@ -10,7 +10,7 @@
 cargo install tetris-rs
 ```
 
-excute:
+excute the binary command `tetris`:
 
 ```sh
 tetris
@@ -18,23 +18,29 @@ tetris
 
 ## Config
 
-you can add to environment variable
+Setting environment variables to customize
 
 ```toml
-FEATURE_BRICK = true #default: true
+# defaults:
+FEATURE_BRICK=true #bool
 
-ACCELERATE_MODE = true #default: true
+ACCELERATE_MODE=true #bool
 
-WIDTH=13 # default: 13
+WIDTH=13 #number
 
-HEIGHT=20 # default: 20
+HEIGHT=20  #number
 
+TEXTURE_FULL='#'  #char
+TEXTURE_WALL='O' #char
+TEXTURE_EMPTY=' ' #char
+TEXTURE_SHADOW='+' #char
 
-TEXTURE_FULL= '#'
-TEXTURE_WALL= 'O'
-TEXTURE_EMPTY= ' '
-TEXTURE_SHADOW= '+'
+```
 
+example:
+
+```sh
+TEXTURE_FULL='%' FEATURE_BRICK=false tetris 
 ```
 
 ## Bricks
@@ -49,8 +55,7 @@ pub enum BrickType {
     Z,
     L,
     J,
-    // feature
-
+    // FEATURE_BRICK to enable feature bricks
     // #
     Dot,
     // # #
@@ -70,11 +75,11 @@ pub enum BrickType {
 
 ## Score Computation
 
-- Eliminating one row, you get 200 scores.
+- Eliminating one row, you get `200` scores.
 
-- 60 more points per combo.
+- `60` more points per combo.
 
-- You get one point for every time you accelerate.
+- You get `1` point for every time you accelerate.
 
 ```rust
 impl Record {
@@ -99,3 +104,33 @@ impl Record {
     }
 }
 ```
+
+## Accelerate Mode
+
+accelerate the update frequency based on your score
+
+```rust
+pub fn update_by(&mut self, counter: i32) {
+    match self.cfg.accelerate {
+        true => {
+            let time = match self.record.score {
+                0..=5999 => 100,
+                6000..=9999 => 70,
+                10000..=24999 => 60,
+                25000..=39999 => 50,
+                40000..=59999 => 45,
+                _ => 40,
+            };
+            if counter % (time) == 0 {
+                self.update()
+            }
+        }
+        false => {
+            if counter % (100) == 0 {
+                self.update()
+            }
+        }
+    }
+}
+```
+

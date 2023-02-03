@@ -1,11 +1,12 @@
-#![feature(exclusive_range_pattern)]
 use std::{
     io::{stdin, stdout, Write},
+    process,
     sync::mpsc::{Receiver, Sender},
     thread,
     time::Duration,
 };
 
+use colored::{Color, Colorize};
 use display::TerminalPainter;
 use game::{GameStatus, Tetris};
 use termion::{input::TermRead, raw::IntoRawMode};
@@ -78,7 +79,7 @@ fn launch(mut t: Tetris, rx: Receiver<Option<Signal>>) {
                 Signal::Rotate => t.event_rotate(),
                 Signal::Left => t.event_left(),
                 Signal::Right => t.event_right(),
-                Signal::Accelerate => t.accelerate(),
+                Signal::Accelerate => t.event_accelerate(),
                 Signal::Sink => t.event_sink(),
             },
             Ok(None) | Err(_) => {}
@@ -87,11 +88,10 @@ fn launch(mut t: Tetris, rx: Receiver<Option<Signal>>) {
         TerminalPainter::draw_game(&t);
 
         if let GameStatus::Exit(ref e) = t.status {
-            TerminalPainter::raw_write_fix(e.to_string());
             TerminalPainter::draw_record(&t);
             write!(stdout, "{}", termion::cursor::Show).unwrap();
-
-            break;
+            TerminalPainter::raw_write_fix(format!("{} {}", "[exit]".color(Color::Blue), e));
+            process::exit(0);
         }
         counter += 1;
         thread::sleep(Duration::from_millis(10));
@@ -99,13 +99,23 @@ fn launch(mut t: Tetris, rx: Receiver<Option<Signal>>) {
 }
 
 fn main() {
+    // 两个线程 A监听键盘事件 B游戏主线程 数据流向: A ===管道===> B
     let (tx, rx) = std::sync::mpsc::channel();
-    let _cfg = env::load().unwrap();
+    let _cfg = match env::load() {
+        Ok(v) => v,
+        Err(e) => {
+            println!("{} {}", "[config error]".color(Color::Red), e);
+            process::exit(1);
+        }
+    };
 
     let mut t = Tetris::new(_cfg);
 
     t.start();
+
+    // 发送者线程A
     thread::spawn(move || listen_key_event(tx));
 
+    // 接受者线程B
     launch(t, rx)
 }
