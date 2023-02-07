@@ -34,16 +34,12 @@ pub fn load() -> Result<EnvConfig, String> {
         Err(_) => 20,
     };
     let full = match env::var("TEXTURE_FULL") {
-        Ok(value) => value
-            .parse()
-            .map_err(|_| "TEXTURE_FULL should be a char")?,
+        Ok(value) => value.parse().map_err(|_| "TEXTURE_FULL should be a char")?,
         Err(_) => '#',
     };
 
     let wall = match env::var("TEXTURE_WALL") {
-        Ok(value) => value
-            .parse()
-            .map_err(|_| "TEXTURE_WALL should be a char")?,
+        Ok(value) => value.parse().map_err(|_| "TEXTURE_WALL should be a char")?,
         Err(_) => 'H',
     };
 

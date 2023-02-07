@@ -7,6 +7,7 @@ use std::{
 };
 
 use colored::{Color, Colorize};
+use crossterm::terminal::disable_raw_mode;
 use display::TerminalPainter;
 use game::{GameStatus, Tetris};
 use termion::{input::TermRead, raw::IntoRawMode};
@@ -90,7 +91,9 @@ fn launch(mut t: Tetris, rx: Receiver<Option<Signal>>) {
         if let GameStatus::Exit(ref e) = t.status {
             TerminalPainter::draw_record(&t);
             write!(stdout, "{}", termion::cursor::Show).unwrap();
+            write!(stdout, "{}", crossterm::cursor::MoveToColumn(0)).unwrap();
             TerminalPainter::raw_write_fix(format!("{} {}", "[exit]".color(Color::Blue), e));
+            disable_raw_mode().unwrap();
             process::exit(0);
         }
         counter += 1;

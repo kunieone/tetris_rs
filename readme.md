@@ -2,18 +2,49 @@
 
  <h2 style="text-align: center;">Command line based Tetris in rust</h2>
 
+> A good example for beginners in Rust + Project architecture development
+
+## Project Structure
+
+```rs
+├── Cargo.lock
+├── Cargo.toml
+├── readme.md //this document
+├── src
+│   ├── bricks.rs
+│   ├── display.rs //display game core
+│   ├── env.rs // Environment Variable structure
+│   ├── game.rs //game core
+│   ├── main.rs //entry 
+│   └── record.rs //score computing & statistics
+└── target
+    ├── CACHEDIR.TAG
+    ├── debug
+    ├── package
+    └── release
+```
+
 ![tetris-rs](https://pic1.zhimg.com/80/v2-16932d31f423f75ee0c69083c8e101ea_1440w.png)
 
 ## Get Started
+
+> add the executable command to your path
 
 ```sh
 cargo install tetris-rs
 ```
 
-excute the binary command `tetris`:
+> excute the compiled command `tetris`:
 
 ```sh
 tetris
+```
+
+> _**Or you can download the source file and compile manually, if you don't want tetris to be a globally recognizable executable command**_
+
+```sh
+git clone https://github.com/kunieone/tetris_rs && cd tetris_rs
+cargo run .
 ```
 
 ## Config
@@ -133,4 +164,3 @@ pub fn update_by(&mut self, counter: i32) {
     }
 }
 ```
-

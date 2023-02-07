@@ -117,7 +117,7 @@ impl TerminalPainter {
         let full = game.cfg.texture[0];
         let wall = game.cfg.texture[1];
         let empty = game.cfg.texture[2];
-        let shadow =game.cfg.texture[3];
+        let shadow = game.cfg.texture[3];
         let mut painter: PaintBoard = PaintBoard::new(w, h, ' ');
 
         // 绘制墙
