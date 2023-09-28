@@ -15,7 +15,7 @@ pub enum GameStatus {
 #[derive(PartialEq, Eq)]
 pub enum InGameStatus {
     GameJustOver,
-    KeepDroping,
+    KeepDropping,
     FinishDropping,
 }
 
@@ -24,6 +24,8 @@ pub enum ControlLimit {
     CantRight,
     CantLeftAndRight,
 }
+
+
 
 #[derive(Debug, Clone)]
 pub struct Tetris {
@@ -169,7 +171,7 @@ impl Tetris {
         // 持续掉掉落
         // 这里不需要担心内部的游戏结束触发。机制。如果结束，则游戏Status成为Exit，游戏循环内通过判断则结束游戏。
         let mut coounter = 0;
-        while self.down_settle() == InGameStatus::KeepDroping {
+        while self.down_settle() == InGameStatus::KeepDropping {
             coounter += 1;
         }
         self.record.score += coounter;
@@ -272,7 +274,7 @@ impl Tetris {
             // 这里是完成💥（碰撞）同时还没有游戏结束。
             return InGameStatus::FinishDropping;
         }
-        return InGameStatus::KeepDroping;
+        return InGameStatus::KeepDropping;
     }
 
     // 结算
@@ -285,7 +287,7 @@ impl Tetris {
                 self.record.compute(times); //记录对应的分数
                 self.new_small_run(); //召唤新的砖块.
             }
-            InGameStatus::KeepDroping => {
+            InGameStatus::KeepDropping => {
                 self.now_brick_position.1 += 1;
             }
             InGameStatus::GameJustOver => {}
