@@ -25,8 +25,6 @@ pub enum ControlLimit {
     CantLeftAndRight,
 }
 
-
-
 #[derive(Debug, Clone)]
 pub struct Tetris {
     pub board: Board,
